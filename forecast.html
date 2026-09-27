@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nightscout Forecast</title>
+<style>
+:root{
+  --bg:#080b0f; --card:#151a21; --line:#303844; --text:#f4f6f8;
+  --muted:#8e98a6; --green:#59e35b; --yellow:#ffe34a; --red:#ff4d4d;
+  --blue:#35a9ff; --cyan:#2de4e4; --uam:#c9bd60;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; padding:22px 14px;
+  background:#080b0f; color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+}
+.card{
+  width:min(1000px,100%); margin:auto; padding:22px 22px 18px;
+  background:linear-gradient(#171d25,#10151c);
+  border:1px solid #303844; border-radius:20px;
+  box-shadow:0 18px 50px rgba(0,0,0,.5);
+}
+h1{text-align:center;margin:0;font-size:28px}
+.subtitle{text-align:center;color:var(--muted);font-size:12px;margin:4px 0 14px}
+.current{display:flex;align-items:center;justify-content:center;gap:10px;color:#b7c0ca;font-size:18px}
+#bg{font-size:54px;font-weight:800;color:#fff;line-height:1}
+#arrow{font-size:34px;font-weight:800;color:#fff}
+.info{display:flex;justify-content:center;gap:12px;margin:16px 0 18px}
+.infoBox{min-width:145px;text-align:center;padding:8px 16px;background:#202731;border:1px solid #37414e;border-radius:11px}
+.infoLabel{font-size:11px;color:#8e98a6;letter-spacing:1px}
+.info b{font-size:21px}
+.tableWrap{overflow-x:auto;border:1px solid #303844;border-radius:12px}
+table{width:100%;min-width:680px;border-collapse:collapse;font-size:17px}
+th{padding:11px 8px;background:#252c35;color:#fff}
+th:first-child,td:first-child{text-align:left;padding-left:16px}
+td{padding:11px 8px;text-align:center;border-top:1px solid #303844;font-weight:700}
+.forecastCell{font-size:21px}
+.iob{color:var(--blue)} .uam{color:var(--uam)} .zt{color:var(--cyan)}
+.rowName{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.meaning{font-size:11px;font-weight:400;color:#aeb7c2;letter-spacing:0}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.iob .dot{background:var(--blue)} .uam .dot{background:#ffd21f}
+.zt .dot{background:var(--cyan);border-radius:3px}
+.time{display:block;font-size:10px;color:#8e98a6;font-weight:400;margin-top:2px}
+.explain td,.explain{background:#171d25;color:#aeb7c2;font-size:12px;font-weight:400;text-align:left}
+.explain td{padding:7px 14px 10px;border-top:0;border-bottom:1px solid #303844;line-height:1.45}
+.explainTitle{font-weight:700;color:#fff}
+.iobExplain .explainTitle{color:var(--blue)} .uamExplain .explainTitle{color:#ffd21f} .ztExplain .explainTitle{color:var(--cyan)}
+
+.chartBox{
+  margin-top:18px; padding:8px 8px 5px;
+  background:#0c1015; border:1px solid #303844; border-radius:12px;
+}
+.chartTitle{font-size:13px;color:#bfc7d0;padding:5px 8px 3px;font-weight:700}
+#nightscoutFrame{min-height:620px}
+.chartLegend{display:none}
+.status{text-align:center;margin-top:12px;color:#8993a0;font-size:12px}
+.error{color:#ff6b6b}
+.note{text-align:center;margin-top:8px;color:#626d7a;font-size:10px}
+
+    .compactExplain td {
+      padding: 2px 10px 8px 10px;
+      border: 0;
+      font-size: 13px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+
+  
+    .bgTrendArrow {
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-left: 6px;
+    }
+
+
+    .bg-safe { color: #39d353 !important; }
+    .bg-mid  { color: #ffd43b !important; }
+    .bg-high { color: #ff4d4f !important; }
+    .bg-low  { color: #ff4d4f !important; }
+
+
+    #bgValue {
+      font-size: 3em !important;
+      font-weight: 900 !important;
+      line-height: 0.95;
+      display: inline-block;
+    }
+
+</style>
+</head>
+
+<body>
+<div class="card">
+  <h1>Nightscout Forecast</h1>
+<div class="subtitle">Dự báo glucose từ AAPS / OpenAPS</div>
+
+<div class="current">
+  <span>BG</span>
+  <span id="bgValue">---</span>
+  <span id="arrow">--</span>
+</div>
+
+<div class="info">
+  <div class="infoBox">
+    <div class="infoLabel">IOB</div>
+    <b id="iobNow">---</b> U
+  </div>
+  <div class="infoBox">
+    <div class="infoLabel">COB</div>
+    <b id="cobNow">---</b> g
+  </div>
+</div>
+
+<div class="tableWrap">
+<table>
+  <thead>
+    <tr>
+      <th>Forecast</th>
+      <th>+15′<span class="time">15 phút</span></th>
+      <th>+30′<span class="time">30 phút</span></th>
+      <th>+45′<span class="time">45 phút</span></th>
+      <th>+60′<span class="time">60 phút</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="iob">
+      <td><span class="rowName"><span class="dot"></span>IOB <span class="meaning">(insulin đang hoạt động)</span></span></td>
+      <td id="iob15" class="forecastCell">---</td>
+      <td id="iob30" class="forecastCell">---</td>
+      <td id="iob45" class="forecastCell">---</td>
+      <td id="iob60" class="forecastCell">---</td>
+    </tr>
+    <tr class="compactExplain iobCompactExplain"><td colspan="5"><span id="iobExplain">Đang tính xu hướng...</span></td></tr>
+    <tr class="uam">
+      <td><span class="rowName"><span class="dot"></span>UAM <span class="meaning">(bữa ăn chưa khai báo)</span></span></td>
+      <td id="uam15" class="forecastCell">---</td>
+      <td id="uam30" class="forecastCell">---</td>
+      <td id="uam45" class="forecastCell">---</td>
+      <td id="uam60" class="forecastCell">---</td>
+    </tr>
+    <tr class="compactExplain uamCompactExplain"><td colspan="5"><span id="uamExplain">Đang tính xu hướng...</span></td></tr>
+    <tr class="zt">
+      <td><span class="rowName"><span class="dot"></span>ZT <span class="meaning">(dự báo basal = 0)</span></span></td>
+      <td id="zt15" class="forecastCell">---</td>
+      <td id="zt30" class="forecastCell">---</td>
+      <td id="zt45" class="forecastCell">---</td>
+      <td id="zt60" class="forecastCell">---</td>
+    </tr>
+    <tr class="compactExplain ztCompactExplain"><td colspan="5"><span id="ztExplain">Đang tính xu hướng...</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+
+<div class="chartBox">
+  <div class="chartTitle">Nightscout BG & Forecast</div>
+  <iframe
+    id="nightscoutFrame"
+    src="https://nightscout-aaps.onrender.com/"
+    title="Nightscout BG chart"
+    loading="eager"
+    referrerpolicy="no-referrer"
+    style="width:100%;height:720px;border:0;border-radius:10px;background:#111;display:block;"
+    allow="fullscreen">
+  </iframe>
+</div>
+
+<div class="status" id="status">Đang kết nối Nightscout...</div>
+<div class="note">Chỉ hiển thị dự báo thuật toán • cập nhật tự động mỗi 60 giây</div>
+</div>
+
+<script>
+const NIGHTSCOUT = "";
+
+function valueAt(arr, minutes) {
+  if (!Array.isArray(arr) || !arr.length) return "---";
+  const index = Math.round(minutes / 5);
+  return index < arr.length && arr[index] != null ? Math.round(Number(arr[index])) : "---";
+}
+
+
+function getNum(prefix, min) {
+  const el = document.getElementById(prefix + min);
+  const n = Number(el?.textContent);
+  return Number.isFinite(n) ? n : null;
+}
+
+function trendText(prefix) {
+  const vals = [15,30,45,60].map(m => getNum(prefix,m));
+  if (vals.some(v => v === null)) return "Đang tính xu hướng...";
+  const first = vals[0], last = vals[vals.length-1];
+  const diff = last - first;
+  if (diff <= -5) return `BG dự báo giảm (${first} → ${last})`;
+  if (diff >= 5) return `BG dự báo tăng (${first} → ${last})`;
+  return `BG dự báo tương đối ổn định (${first} → ${last})`;
+}
+
+function updateExplanations() {
+  document.getElementById("iobExplain").textContent = trendText("iob");
+  document.getElementById("uamExplain").textContent = trendText("uam");
+  document.getElementById("ztExplain").textContent = trendText("zt");
+}
+
+function updateBgColor(bg) {
+      const el = document.getElementById("bgValue");
+      if (!el || !Number.isFinite(bg)) return;
+      el.classList.remove("bg-safe", "bg-mid", "bg-high", "bg-low");
+      // <70 red, 70-140 green, 141-180 yellow, >180 red.
+      if (bg < 70) el.classList.add("bg-low");
+      else if (bg <= 140) el.classList.add("bg-safe");
+      else if (bg <= 180) el.classList.add("bg-mid");
+      else el.classList.add("bg-high");
+    }
+
+async function update() {
+  const status = document.getElementById("status");
+  try {
+    const [dsResponse, entryResponse] = await Promise.all([
+      fetch(NIGHTSCOUT + "/api/v1/devicestatus.json?count=1", {cache:"no-store"}),
+      fetch(NIGHTSCOUT + "/api/v1/entries.json?count=48", {cache:"no-store"})
+    ]);
+
+    if (!dsResponse.ok) throw new Error("Không đọc được devicestatus");
+    const data = await dsResponse.json();
+    if (!data.length) throw new Error("Không có devicestatus");
+
+    const d = data[0];
+    const openaps = d.openaps || {};
+    const iob = openaps.iob || {};
+    const pred = openaps.predBGs || {};
+
+    if (iob.iob != null)
+      document.getElementById("iobNow").textContent = Number(iob.iob).toFixed(2);
+
+    if (iob.cob != null)
+      document.getElementById("cobNow").textContent = Number(iob.cob).toFixed(0);
+
+    let bg = iob.bg;
+    let direction = "";
+    let entries = [];
+
+    if (entryResponse.ok) {
+      entries = await entryResponse.json();
+      if (entries.length) {
+        if (entries[0].sgv != null) bg = entries[0].sgv;
+        direction = entries[0].direction || "";
+      }
+    }
+
+    if (bg != null) {
+        const bgNumber = Math.round(Number(bg));
+        document.getElementById("bgValue").textContent = bgNumber;
+        updateBgColor(bgNumber);
+      }
+    const trendArrows = {
+      DoubleUp: "↑↑",
+      SingleUp: "↑",
+      FortyFiveUp: "↗",
+      Flat: "→",
+      FortyFiveDown: "↘",
+      SingleDown: "↓",
+      DoubleDown: "↓↓"
+    };
+    document.getElementById("arrow").textContent =
+      trendArrows[direction] || direction;
+
+    function findPredictions(obj) {
+      if (!obj || typeof obj !== "object") return null;
+
+      if (Array.isArray(obj.IOB) || Array.isArray(obj.UAM) || Array.isArray(obj.ZT)) {
+        return obj;
+      }
+
+      for (const key of Object.keys(obj)) {
+        const found = findPredictions(obj[key]);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    const predictions = findPredictions(openaps) || findPredictions(d);
+
+    const IOB = predictions?.IOB || [];
+    const UAM = predictions?.UAM || [];
+    const ZT  = predictions?.ZT  || [];
+
+    for (const [prefix, arr] of [["iob",IOB],["uam",UAM],["zt",ZT]]) {
+      for (const min of [15,30,45,60]) {
+        document.getElementById(prefix + min).textContent = valueAt(arr, min);
+      }
+    }
+    updateExplanations();
+
+    status.className = "status";
+    status.textContent = "Cập nhật: " + new Date().toLocaleTimeString("vi-VN");
+  } catch (e) {
+    console.error(e);
+    status.className = "status error";
+    status.textContent = "Không đọc được dữ liệu Nightscout: " + e.message;
+  }
+}
+
+update();
+setInterval(update, 60000);
+
+window.addEventListener("resize", () => {
+  update();
+});
+
+    
+    
+</script>
+</body>
+</html>
