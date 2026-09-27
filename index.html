@@ -217,11 +217,11 @@ function updateBgColor(bg) {
 async function update() {
   const status = document.getElementById("status");
   try {
-    const [dsResponse, entryResponse] = await Promise.all([
-      fetch(NIGHTSCOUT + "/api/v1/devicestatus.json?count=1", {cache:"no-store"}),
-      fetch(NIGHTSCOUT + "/api/v1/entries.json?count=48", {cache:"no-store"})
-    ]);
 
+const [dsResponse, entryResponse] = await Promise.all([
+  fetch("https://nightscout-aaps.onrender.com/api/v1/devicestatus.json?count=1", {cache:"no-store"}),
+  fetch("https://nightscout-aaps.onrender.com/api/v1/entries.json?count=48", {cache:"no-store"})
+]);
     if (!dsResponse.ok) throw new Error("Không đọc được devicestatus");
     const data = await dsResponse.json();
     if (!data.length) throw new Error("Không có devicestatus");
